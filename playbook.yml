@@ -1,0 +1,73 @@
+---
+
+- hosts: controlhost
+  tasks:
+    - name: Register ssh key in DO
+      digital_ocean:
+        state=present
+        command=ssh
+        name=my_ssh_key
+        ssh_pub_key="{{ lookup('file', ansible_user_dir + '/.ssh/id_rsa.pub') }}"
+      register: ssh_key
+
+    - name: Launch a droplet
+      digital_ocean:
+        state=present
+        command=droplet
+        id={{ droplet_id | default('') }}
+        name=frf-backup
+        size_id=512mb
+        region_id=ams2
+        image_id=debian-8-x64
+        ssh_key_ids={{ ssh_key.ssh_key.id }}
+        wait=yes
+        wait_timeout=500
+      register: my_droplet
+
+    - name: Add new instance to the host group
+      add_host:
+        hostname={{ my_droplet.droplet.ip_address }}
+        groups=droplet
+
+    - debug: msg="Put this in [controlhost:vars] section of the hosts file{{ ":" }} droplet_id={{ my_droplet.droplet.id }}"
+    - pause: prompt="Press 'ctrl+c, c' to continue. 'ctrl+c, a' to abort"
+
+- hosts: droplet
+  tasks:
+    - name: Import nginx signing key
+      apt_key: url=http://nginx.org/keys/nginx_signing.key state=present
+
+    - name: Add nginx apt repository
+      apt_repository: repo="deb http://nginx.org/packages/debian/ {{ ansible_distribution_release }} nginx" state=present
+
+    - name: Install nginx
+      apt: name=nginx state=latest update_cache=yes
+
+    - name: Install unzip
+      apt: name=unzip state=present
+
+    - name: Get frf archive to the server
+      unarchive: src=frf.zip dest=/usr/share/nginx
+
+    - name: Update site name in nginx config
+      replace:
+        dest: /etc/nginx/conf.d/default.conf
+        regexp: "localhost"
+        replace: "{{ inventory_hostname }}"
+      register: nginx_conf
+
+    - name: Update site path in nginx config
+      replace:
+        dest: /etc/nginx/conf.d/default.conf
+        regexp: "/usr/share/nginx/html"
+        replace: "/usr/share/nginx/{{ frf_backup_name }}"
+      register: nginx_conf
+
+    - name: Test nginx.conf
+      command: /etc/init.d/nginx configtest
+
+    - name: Reload nginx
+      service: name=nginx state=reloaded
+      when: nginx_conf | changed
+
+    - debug: msg="http://{{ inventory_hostname }}/"

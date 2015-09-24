@@ -1,0 +1,10 @@
+[controlhost]
+localhost connection=local
+
+[controlhost:vars]
+
+[droplet]
+
+[droplet:vars]
+ansible_ssh_user=root
+
