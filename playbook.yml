@@ -10,11 +10,25 @@
         ssh_pub_key="{{ lookup('file', ansible_user_dir + '/.ssh/id_rsa.pub') }}"
       register: ssh_key
 
+    - name: Query info about existing droplet
+      digital_ocean:
+        state=present
+        command=droplet
+        name=frf-backup
+        id={{ droplet_id }}
+        size_id=512mb
+        region_id=ams2
+        image_id=debian-8-x64
+        ssh_key_ids={{ ssh_key.ssh_key.id }}
+        wait=yes
+        wait_timeout=500
+      when: droplet_id is defined
+      register: query_droplet
+
     - name: Launch a droplet
       digital_ocean:
         state=present
         command=droplet
-        id={{ droplet_id | default('') }}
         name=frf-backup
         size_id=512mb
         region_id=ams2
@@ -22,15 +36,30 @@
         ssh_key_ids={{ ssh_key.ssh_key.id }}
         wait=yes
         wait_timeout=500
-      register: my_droplet
+      when: droplet_id is not defined
+      register: launch_droplet
 
     - name: Add new instance to the host group
       add_host:
-        hostname={{ my_droplet.droplet.ip_address }}
+        hostname={{ query_droplet.droplet.ip_address }}
         groups=droplet
+      when: query_droplet.droplet is defined
 
-    - debug: msg="Put this in [controlhost:vars] section of the hosts file{{ ":" }} droplet_id={{ my_droplet.droplet.id }}"
+    - name: Add new instance to the host group
+      add_host:
+        hostname={{ launch_droplet.droplet.ip_address }}
+        groups=droplet
+      when: launch_droplet | changed
+
+    - name: Wait for SSH
+      wait_for: host={{ launch_droplet.droplet.ip_address }} port=22 timeout=60 state=started
+      when: launch_droplet | changed
+
+    - debug: msg="Put this in [controlhost:vars] section of the hosts file{{ ":" }} droplet_id={{ launch_droplet.droplet.id }}"
+      when: launch_droplet | changed
+
     - pause: prompt="Press 'ctrl+c, c' to continue. 'ctrl+c, a' to abort"
+      when: launch_droplet | changed
 
 - hosts: droplet
   tasks:
