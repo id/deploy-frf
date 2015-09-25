@@ -1,25 +1,27 @@
 # Deploy FriendFeed backup
+Launch a $5 instance on DigitalOcean, install required software and configure it to serve your static web sites in a few simple steps
+
+## Disclaimer
+Author take no responsibility for loss, inconvenience or injury resulting from following these instructions.
+Do this on your own risk.
 
 ## How To
 
-### Create account on digitalocean.com
-And create API Token here: https://cloud.digitalocean.com/settings/applications  
-Put this in ~/.bashrc:
+- create an account on [DigitalOcean](https://www.digitalocean.com/)
+- create your [API Token](https://cloud.digitalocean.com/settings/applications)
+- save it somewhere, it's needed for `DO_TOKEN` shell variable (in commands below)
+- install [Vagrant](https://www.vagrantup.com/downloads.html)
+- run `ssh-keygen` if you don't have your ssh key in ~/.ssh/id_rsa
 
-    export DO_API_TOKEN=<token>
+Now open Terminal and run a few commands:
 
-### Install software
-
-    sudo pip install --upgrade ansible
+    vagrant plugin install vagrant-digitalocean
+    export DO_TOKEN=xxx
     git clone https://github.com/id/deploy-frf.git
     cd deploy-frf
 
-Make sure you have ssh key, otherwise run `ssh-keygen` and follow the instructions.
+Copy zip files with your friendfeed archives in this folder and run:
 
-### Deploying
-Copy frf archive to this directory and name it frf.zip.  
-Set `frf_backup_name` to the name of the directory inside frf.zip.  
-Then run ansible and let it do the job.
+    vagrant up
 
-    ansible-playbook -i hosts playbook.yml -e frf_backup_name=xxx
-
+In the end you should see url which you can paste in your browser.
