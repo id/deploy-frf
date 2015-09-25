@@ -2,7 +2,7 @@
 Launch a $5 instance on DigitalOcean, install required software and configure it to serve your static web sites in a few simple steps
 
 ## Disclaimer
-Author take no responsibility for loss, inconvenience or injury resulting from following these instructions.
+Author takes no responsibility for loss, inconvenience or injury resulting from following these instructions.  
 Do this on your own risk.
 
 ## How To
